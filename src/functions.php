@@ -39,29 +39,31 @@ function host(...$hostnames)
 {
     $deployer = Deployer::get();
     $hostnames = Range::expand($hostnames);
+    $hosts = array();
 
-    // Return hosts if has
-    if ($deployer->hosts->has($hostnames[0])) {
-        if (count($hostnames) === 1) {
-            return $deployer->hosts->get($hostnames[0]);
+    // Loop through the hostnames
+    $hosts = array_map(function ($hostname) use ($deployer) {
+        // If the hostname already exists then get it
+        if ($deployer->hosts->has($hostname)) {
+            return $deployer->hosts->get($hostname);
         } else {
-            return array_map([$deployer->hosts, 'get'], $hostnames);
-        }
-    }
-
-    // Add otherwise
-    if (count($hostnames) === 1) {
-        $host = new Host($hostnames[0]);
-        $deployer->hosts->set($hostnames[0], $host);
-        return $host;
-    } else {
-        $hosts = array_map(function ($hostname) use ($deployer) {
+            // Otherwise create a new host object and set it
             $host = new Host($hostname);
             $deployer->hosts->set($hostname, $host);
             return $host;
-        }, $hostnames);
+        }
+    }, $hostnames);
+
+    // If there is only one host then return it
+    if (count($hosts) === 1) {
+        return current($hosts);
+    } elseif (count($hosts) > 1) {
+        // Otherwise return a Proxy with the hosts added to it
         return new Proxy($hosts);
     }
+
+    // If we get here then there were no hosts so throw an exception
+    throw new \InvalidArgumentException('A host requires at least one hostname');
 }
 
 /**
